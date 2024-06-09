@@ -1,0 +1,188 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class RedPlayer : MonoBehaviour
+{
+    [SerializeField] float initialVelocity;
+    [SerializeField] float _Angle;
+    [SerializeField] LineRenderer line;
+    [SerializeField] float step;
+    [SerializeField] Transform firePosition;
+    [SerializeField] GameObject firePositionPrefab;
+    [SerializeField] GameObject currentPrefabInstance;
+    [SerializeField] Transform ballHide;
+    [SerializeField] AudioSource throw1;
+    [SerializeField] AudioSource throw2;
+    [SerializeField] AudioSource throw3;
+    [SerializeField] AudioSource shoot1;
+    [SerializeField] AudioSource shoot2;
+    [SerializeField] AudioSource shoot3;
+    [SerializeField] AudioSource miss;
+
+    LevelManager levelManager;
+    AudienceManager audienceManager;
+
+
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        levelManager = GameObject.Find("GameManager").GetComponent<LevelManager>();
+        audienceManager = GameObject.Find("GameManager").GetComponent<AudienceManager>();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        float angle = _Angle * Mathf.Deg2Rad;
+        DrawPath(initialVelocity, angle, step);
+
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            RandomAudio();
+
+            if (currentPrefabInstance != null)
+            {
+                Destroy(currentPrefabInstance);
+            }
+
+            currentPrefabInstance = Instantiate(firePositionPrefab, firePosition.position, Quaternion.identity);
+            StopAllCoroutines();
+            StartCoroutine(Coroutine_Movement(initialVelocity, angle));
+        }
+        AimAdjust();
+    }
+
+    private void DrawPath(float v0, float angle, float step)
+    {
+        step = Mathf.Max(0.01f, step);
+        float totalTime = 10;
+        line.positionCount = (int)(totalTime / step) + 2;
+        int count = 0;
+        for (float i = 0; i < totalTime; i += step)
+        {
+            float x = v0 * i * Mathf.Cos(angle);
+            float y = v0 * i * Mathf.Sin(angle) - 0.5f * -Physics.gravity.y * Mathf.Pow(i, 2);
+            line.SetPosition(count, firePosition.position + new Vector3(x, y, 0));
+            count++;
+        }
+        float xFinal = v0 * totalTime * Mathf.Cos(angle);
+        float yFinal = v0 * totalTime * Mathf.Sin(angle) - (1f / 2f) * -Physics.gravity.y * Mathf.Pow(totalTime, 2);
+        line.SetPosition(count, firePosition.position + new Vector3(xFinal, yFinal, 0));
+    }
+
+    IEnumerator Coroutine_Movement(float v0, float angle)
+    {
+        float t = 0;
+        while (t < 100)
+        {
+            float x = v0 * t * Mathf.Cos(angle);
+            float y = v0 * t * Mathf.Sin(angle) - (1f / 2f) * -Physics.gravity.y * Mathf.Pow(t, 2);
+            transform.position = currentPrefabInstance.transform.position + new Vector3(x, y, 0);
+            t += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    void AimAdjust()
+    {
+
+        if (Input.GetKey(KeyCode.E))
+        {
+            initialVelocity += 1 * 2 * Time.deltaTime;
+        }
+
+        if (Input.GetKey(KeyCode.Q))
+        {
+            initialVelocity -= 1 * 2 * Time.deltaTime;
+        }
+
+        if (initialVelocity > 10)
+        {
+            initialVelocity = 1;
+        }
+        else if (initialVelocity < 1)
+        {
+            initialVelocity = 10;
+        }
+
+        if (Input.GetKey(KeyCode.D))
+        {
+            _Angle += 1 * 20 * Time.deltaTime;
+        }
+        if (Input.GetKey(KeyCode.A))
+        {
+            _Angle -= 1 * 20 * Time.deltaTime;
+        }
+
+        if (_Angle > 88)
+        {
+            _Angle = 1;
+        }
+        else if (_Angle < 1)
+        {
+            _Angle = 88;
+        }
+
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Collidable"))
+        {
+            StopAllCoroutines();
+
+        }
+        else if (collision.gameObject.CompareTag("Cup"))
+        {
+            StopAllCoroutines();
+            levelManager.score++;
+            gameObject.transform.position = ballHide.transform.position;
+            Destroy(collision.transform.parent.gameObject);
+
+            int randomInt = UnityEngine.Random.Range(1, 3);
+
+            if (randomInt == 1)
+            {
+                shoot1.Play();
+            }
+            else if (randomInt == 2)
+            {
+                shoot2.Play();
+            }
+            else if (randomInt == 3)
+            {
+                shoot3.Play();
+            }
+        }
+        else if (collision.gameObject.CompareTag("Clock"))
+        {
+            StopAllCoroutines();
+            audienceManager.hit = true;
+
+        }
+    }
+
+    void RandomAudio()
+    {
+        int randomInt = UnityEngine.Random.Range(1, 3);
+
+        if (randomInt == 1)
+        {
+            throw1.Play();
+        }
+        else if (randomInt == 2)
+        {
+            throw2.Play();
+        }
+        else if (randomInt == 3)
+        {
+            throw3.Play();
+        }
+    }
+}
